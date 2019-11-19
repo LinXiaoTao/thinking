@@ -1,3 +1,9 @@
+## 更新记录
+
+* 本文完成于 本文写于 2019.09.10，Flutter SDK 版本为 v1.5.4-hotfix.2
+* 2019.09.12 更新，将**差异包**字眼变更为**增量包**
+* 2019.09.12 更新，**--not-hot** 写错，应该为 **--no-hot**
+
 ## 前言
 
 这是浅谈 Flutter 系列的第二篇，上一篇是 [浅谈Flutter构建](https://juejin.im/post/5d68fb1af265da03d063b69e)，在上一篇中，主要是理清 Flutter 在 debug 和 release 模式下生成的不同产物分别是什么，怎么调试 build_tools 源码等等，这些不会在后面重复讨论，所以有需要的同学可以先看下第一篇。
@@ -8,7 +14,7 @@
 
 在第一篇文章中，我们说到，对于每个 Flutter 命令，都有一个 Command 类与之对应，我们使用的 `flutter run` 是由 RunCommand 类处理的。
 
-默认在 debug 模式下会开启 hot mode，release 模式下默认关闭，可以在执行 run 命令的时候，添加 `--not-hot` 来禁用 hot mode。
+默认在 debug 模式下会开启 hot mode，release 模式下默认关闭，可以在执行 run 命令的时候，添加 `--no-hot` 来禁用 hot mode。
 
 当启用 hot mode 时，会使用 HotRunner 来启动 Flutter 应用。
 
@@ -115,7 +121,7 @@ hot mode 开启后，首先会进行初始化，这部分相关的代码在 `Hot
 
 * 根据第二步建立的 sockets 连接地址和转发的端口，建立 RPC 通信，这里使用的 [json_rpc_2](https://github.com/dart-lang/json_rpc_2) 。
 
-  > 关于 Dart VM 支持的 RPC 方法可以看这里：[Dart VM Service Protocol 3.26][https://github.com/dart-lang/sdk/blob/master/runtime/vm/service/service.md]
+  > 关于 Dart VM 支持的 RPC 方法可以看这里：[Dart VM Service Protocol 3.26](https://github.com/dart-lang/sdk/blob/master/runtime/vm/service/service.md)
   >
   > 关于 JSON-RPC，可以看这里：[JSON-RPC 2.0 Specification](https://www.jsonrpc.org/specification)
   >
@@ -166,9 +172,9 @@ hot mode 开启后，首先会进行初始化，这部分相关的代码在 `Hot
   
   ![listViews](https://user-gold-cdn.xitu.io/2019/9/9/16d14ec3de2b95e0?w=747&h=535&f=png&s=61996)
   
-* 这是初始化的最后一步，使用 devfs 管理设备文件，当执行热重载时，会重新生成差异包再同步到设备上。
+* 这是初始化的最后一步，使用 devfs 管理设备文件，当执行热重载时，会重新生成增量包再同步到设备上。
 
-  首先，会在设备上生成一个目录，用于存放重载的资源文件和差异包。
+  首先，会在设备上生成一个目录，用于存放重载的资源文件和增量包。
 
   ``` dart
   @override                                                                             
@@ -241,7 +247,7 @@ if (lower == 'r') {
 
 `restart()` 函数的核心代码在 `_reloadSources()` 函数中，这个函数的主要作用如下：
 
-* 调用 `_updateDevFS()` 方法，生成差异包，并同步到设备上，DevFS 用于管理设备文件系统。
+* 调用 `_updateDevFS()` 方法，生成增量包，并同步到设备上，DevFS 用于管理设备文件系统。
 
   首先比较资源文件的修改时间，判断是否需要更新：
 
@@ -259,7 +265,7 @@ if (lower == 'r') {
 
   dirtyEntries 用于存放需要更新的内容，syncedBytes 计算需要同步的字节数。
 
-  接着，生成代码差异包，以 .incremental.dill 结尾：
+  接着，生成代码增量包，以 .incremental.dill 结尾：
 
   ``` dart
   final CompilerOutput compilerOutput = await generator.recompile(                                              
@@ -286,7 +292,7 @@ if (lower == 'r') {
   }                                                                                     
   ```
 
-* 调用 `reloadSources()` 方法通知 Dart VM 重新加载 Dart 差异包，同样的这里也是调用的 RPC 方法：
+* 调用 `reloadSources()` 方法通知 Dart VM 重新加载 Dart 增量包，同样的这里也是调用的 RPC 方法：
 
   ``` dart
   final Map<String, dynamic> arguments = <String, dynamic>{                                      
@@ -310,9 +316,9 @@ if (lower == 'r') {
   }                                                                 
   ```
 
-## 关于差异包
+## 关于增量包
 
-我们用一个非常简单的 DEMO 来看下生成的差异包的内容。DEMO 有两个 dart 文件，首先是 main.dart，这个是入口文件：
+我们用一个非常简单的 DEMO 来看下生成的增量包的内容。DEMO 有两个 dart 文件，首先是 main.dart，这个是入口文件：
 
 ``` dart
 void main() => runApp(MyApp());          
@@ -355,21 +361,21 @@ class HomePage extends StatelessWidget {
 
 ![incremental.dill](https://user-gold-cdn.xitu.io/2019/9/9/16d162fd0eda5b3e?w=804&h=928&f=png&s=941410)
 
-修改的内容已经包含在差异包中了，当我们执行 `_updateDevFS()` 方法后，incremental.dill 也被同步到设备中了。
+修改的内容已经包含在增量包中了，当我们执行 `_updateDevFS()` 方法后，incremental.dill 也被同步到设备中了。
 
 ![app_incremental_dill](https://user-gold-cdn.xitu.io/2019/9/9/16d1633c7395161b?w=758&h=354&f=png&s=46822)
 
-名字虽然不一样，但内容一致的。现在设备是已经包含了差异包，接着下来就是通知 Dart VM 刷新了，先调用 `reloadSources()`，最后调用 `flutterReassemble()`，执行完之后，我们就可以看到新的界面了。
+名字虽然不一样，但内容一致的。现在设备是已经包含了增量包，接着下来就是通知 Dart VM 刷新了，先调用 `reloadSources()`，最后调用 `flutterReassemble()`，执行完之后，我们就可以看到新的界面了。
 
 ![new_ui](https://user-gold-cdn.xitu.io/2019/9/9/16d1643f1380ac04?w=608&h=1086&f=png&s=97611)
 
 ## 总结
 
-热重载功能的实现，首先是差异包的实现，这里我们没有细讲，留到后面的文章中，生成的差异包，文件后缀以 incremental.dill 结尾，文件的同步则通过 adb 建立的 sockets 连接进行传输，而且这个 sockets 另外一个非常重要的功能就是，建立和 Dart VM 的 RPC 通信，Dart VM 本身就已经定义了一些 RPC 方法，Flutter 又扩展了一些，获取 Dart VM 信息，刷新 Flutter 视图等等都是通过 RPC 实现的。
+热重载功能的实现，首先是增量包的实现，这里我们没有细讲，留到后面的文章中，生成的增量包，文件后缀以 incremental.dill 结尾，文件的同步则通过 adb 建立的 sockets 连接进行传输，而且这个 sockets 另外一个非常重要的功能就是，建立和 Dart VM 的 RPC 通信，Dart VM 本身就已经定义了一些 RPC 方法，Flutter 又扩展了一些，获取 Dart VM 信息，刷新 Flutter 视图等等都是通过 RPC 实现的。
 
-因为篇幅的原因，这里我们并没有讲解差异包的生成实现，还有 Dart VM 和 Flutter engine 对 RPC 方法的实现，这个留到后面的文章。
+因为篇幅的原因，这里我们并没有讲解增量包的生成实现，还有 Dart VM 和 Flutter engine 对 RPC 方法的实现，这个留到后面的文章。
 
-写到这里，其实距离实现动态更新的目标也越来越清晰，第一，生成差异包；第二，在合适的时候，重新加载刷新差异包。
+写到这里，其实距离实现动态更新的目标也越来越清晰，第一，生成增量包；第二，在合适的时候，重新加载刷新增量包。
 
 
 
